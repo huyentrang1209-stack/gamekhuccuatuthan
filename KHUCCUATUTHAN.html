@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KHÚC CUA TỬ THẦN - QUẢN LÝ ĐIỂM</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #1a1a2e; color: #fff; display: flex; justify-content: center; padding: 20px; }
+        #game-container { background: #16213e; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 500px; border: 2px solid #e94560; text-align: center; }
+        .hidden { display: none; }
+        h2 { color: #e94560; text-transform: uppercase; letter-spacing: 2px; }
+        input { width: 90%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #0f3460; background: #0f3460; color: white; }
+        button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
+        .btn-main { background: #e94560; color: white; }
+        .btn-zalo { background: #0068ff; color: white; margin-top: 20px; border: 2px solid #fff; }
+        .option-btn { background: #e9ecef; color: #1a1a2e; text-align: left; margin-bottom: 8px; border-left: 6px solid #e94560; }
+        #timer-bar { width: 100%; height: 10px; background: #4caf50; border-radius: 5px; transition: width 1s linear; margin-bottom: 15px; }
+        .correct { background: #4caf50 !important; color: white !important; }
+        .wrong { background: #f44336 !important; color: white !important; }
+        #summary { background: #0f3460; padding: 15px; border-radius: 10px; margin-top: 15px; text-align: left; font-size: 0.9em; border: 1px dashed #e94560; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="login-screen">
+        <h2>🏎️ KHÚC CUA TỬ THẦN</h2>
+        <input type="text" id="username" placeholder="Họ và tên học sinh...">
+        <input type="text" id="userclass" placeholder="Lớp (Ví dụ: 9A1)...">
+        <button class="btn-main" onclick="startGame()">BẮT ĐẦU ĐUA</button>
+    </div>
+
+    <div id="quiz-screen" class="hidden">
+        <div id="progress" style="margin-bottom: 5px;">Câu hỏi: <span id="current-idx">1</span>/20</div>
+        <div id="timer-bar"></div>
+        <div id="question-text" style="font-size: 1.2em; font-weight: bold; margin-bottom: 20px; min-height: 60px;"></div>
+        <div id="options-container"></div>
+    </div>
+
+    <div id="result-screen" class="hidden">
+        <h2 style="color:#ffeb3b">🏁 HOÀN THÀNH!</h2>
+        <div id="final-stats" style="font-size: 1.2em; line-height: 1.6;"></div>
+        
+        <div id="summary">
+            <b style="color: #e94560;">NỘI DUNG BÁO CÁO:</b><br>
+            <span id="report-text"></span>
+        </div>
+
+        <button class="btn-zalo" onclick="sendToZalo()">📲 NỘP BÁO CÁO QUA ZALO</button>
+        <button style="background:#555; color:white;" onclick="location.reload()">ĐUA LẠI</button>
+    </div>
+</div>
+
+<audio id="snd-correct" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
+<audio id="snd-wrong" src="https://assets.mixkit.co/active_storage/sfx/2959/2959-preview.mp3"></audio>
+
+<script>
+    const questions = [
+        { q: "Thành phần chính của khí thiên nhiên là gì?", a: ["Methane (CH4)", "Ethane", "Propane", "Butane"], correct: 0 },
+        { q: "Ethylic alcohol nguyên chất sôi ở nhiệt độ bao nhiêu?", a: ["100°C", "78.3°C", "50°C", "0°C"], correct: 1 },
+        { q: "Nhóm nguyên tử nào gây nên tính chất đặc trưng của Acetic acid?", a: ["-OH", "-CHO", "-COOH", "-CH3"], correct: 2 },
+        { q: "Dầu mỏ tồn tại tự nhiên ở trạng thái nào?", a: ["Khí", "Rắn", "Lỏng", "Hơi"], correct: 2 },
+        { q: "Để dập tắt đám cháy xăng dầu, ta KHÔNG nên dùng cách nào?", a: ["Dùng cát", "Dùng bình chữa cháy", "Dùng nước", "Dùng chăn ướt"], correct: 2 },
+        { q: "Công thức cấu tạo thu gọn của ethylic alcohol là?", a: ["CH3-O-CH3", "CH3-CH2-OH", "CH3-COOH", "C2H4"], correct: 1 },
+        { q: "Hiện tượng khi cho mẩu Natri vào ethylic alcohol là gì?", a: ["Có bọt khí thoát ra", "Có kết tủa trắng", "Dung dịch đổi màu", "Không có hiện tượng"], correct: 0 },
+        { q: "Sản phẩm của phản ứng đốt cháy ethylic alcohol gồm?", a: ["CO2 và H2O", "CO và H2", "C và H2O", "CH4 và O2"], correct: 0 },
+        { q: "Giấm ăn là dung dịch acetic acid có nồng độ khoảng?", a: ["10-20%", "2-5%", "50%", "90%"], correct: 1 },
+        { q: "Độ cồn là gì?", a: ["Số gam alcohol/100g nước", "Số ml alcohol/100ml dung dịch", "Khối lượng alcohol nguyên chất", "Nhiệt độ sôi"], correct: 1 },
+        { q: "Lớp khí trên cùng trong mỏ dầu gọi là gì?", a: ["Khí thiên nhiên", "Khí mỏ dầu", "Khí độc", "Khí gas"], correct: 1 },
+        { q: "Nhiên liệu nào là nhiên liệu sạch?", a: ["Than đá", "Dầu hỏa", "Khí thiên nhiên/Sinh học", "Củi khô"], correct: 2 },
+        { q: "Phương pháp tách các phân đoạn dầu thô là gì?", a: ["Lọc", "Chưng cất phân đoạn", "Chiết", "Bay hơi"], correct: 1 },
+        { q: "Acetic acid làm quỳ tím chuyển màu gì?", a: ["Xanh", "Vàng", "Đỏ", "Không đổi"], correct: 2 },
+        { q: "Sản xuất ethylic alcohol từ ethylene bằng cách?", a: ["Cộng nước", "Oxy hóa", "Lên men", "Trùng hợp"], correct: 0 },
+        { q: "Tác hại của lạm dụng rượu bia?", a: ["Hại gan", "Gây tai nạn", "Rối loạn tâm thần", "Tất cả các ý trên"], correct: 3 },
+        { q: "Xăng E5 chứa bao nhiêu % ethylic alcohol?", a: ["1%", "5%", "10%", "15%"], correct: 1 },
+        { q: "Chất tác dụng với Na nhưng KHÔNG tác dụng với NaOH?", a: ["Acetic acid", "Ethylic alcohol", "Nước", "Muối ăn"], correct: 1 },
+        { q: "Thành phần chính của dầu mỏ là?", a: ["Nhiều hydrocarbon", "Chỉ có Methane", "Nước mặn", "Protein"], correct: 0 },
+        { q: "Nhóm -OH trong alcohol gây phản ứng với?", a: ["Cu", "Ag", "Na", "Fe"], correct: 2 }
+    ];
+
+    let currentQ = 0, score = 0, correctCount = 0, timeLeft = 15, timerInterval, shuffledQuestions = [];
+    let user = { name: '', class: '' };
+
+    function startGame() {
+        user.name = document.getElementById('username').value.trim();
+        user.class = document.getElementById('userclass').value.trim();
+        if (!user.name || !user.class) { alert("Vui lòng nhập Tên và Lớp!"); return; }
+        shuffledQuestions = [...questions].sort(() => Math.random() - 0.5);
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('quiz-screen').classList.remove('hidden');
+        showQuestion();
+    }
+
+    function showQuestion() {
+        clearInterval(timerInterval);
+        timeLeft = 15;
+        updateTimerUI();
+        const qData = shuffledQuestions[currentQ];
+        document.getElementById('current-idx').innerText = currentQ + 1;
+        document.getElementById('question-text').innerText = qData.q;
+        const container = document.getElementById('options-container');
+        container.innerHTML = '';
+        qData.a.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(idx);
+            container.appendChild(btn);
+        });
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            updateTimerUI();
+            if (timeLeft <= 0) checkAnswer(-1);
+        }, 1000);
+    }
+
+    function updateTimerUI() {
+        document.getElementById('timer-bar').style.width = (timeLeft / 15 * 100) + "%";
+        document.getElementById('timer-bar').style.background = timeLeft <= 5 ? "#f44336" : "#4caf50";
+    }
+
+    function checkAnswer(selected) {
+        clearInterval(timerInterval);
+        const qData = shuffledQuestions[currentQ];
+        const btns = document.getElementsByClassName('option-btn');
+        if (selected === qData.correct) {
+            score += (10 + timeLeft);
+            correctCount++;
+            if(selected !== -1) btns[selected].classList.add('correct');
+            document.getElementById('snd-correct').play();
+        } else {
+            if(selected !== -1) btns[selected].classList.add('wrong');
+            btns[qData.correct].classList.add('correct');
+            document.getElementById('snd-wrong').play();
+        }
+        setTimeout(() => {
+            currentQ++;
+            if (currentQ < shuffledQuestions.length) showQuestion();
+            else showResult();
+        }, 1200);
+    }
+
+    function showResult() {
+        document.getElementById('quiz-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        const report = `Họ tên: ${user.name} | Lớp: ${user.class} | Số câu đúng: ${correctCount}/20 | Tổng điểm: ${score}`;
+        document.getElementById('final-stats').innerHTML = `<b>Tài xế:</b> ${user.name}<br><b>Điểm:</b> <span style="font-size:1.5em; color:#ffeb3b">${score}</span>`;
+        document.getElementById('report-text').innerText = report;
+    }
+
+    function sendToZalo() {
+        const report = document.getElementById('report-text').innerText;
+        const encodedReport = encodeURIComponent(report);
+        // Mở Zalo và tìm kiếm nội dung (Học sinh sẽ dán vào nhóm lớp)
+        window.open(`https://zalo.me/s/qr/?msg=${encodedReport}`, '_blank');
+        // Cách dự phòng: Copy vào bộ nhớ đệm
+        navigator.clipboard.writeText(report).then(() => {
+            alert("Đã copy báo cáo! Học sinh hãy dán (Paste) vào nhóm Zalo của lớp.");
+        });
+    }
+</script>
+</body>
+</html>
